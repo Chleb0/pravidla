@@ -424,3 +424,7 @@ FodyWeavers.xsd
 
 # Official VS Code C# Dev Kit Extension exclusion
 #*.lscache
+game_state.json
+game_state.tmp
+__pycache__/
+game_config.json.tmp

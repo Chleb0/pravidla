@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Game Control</title>
+<style>
+  :root {
+    --bg: #f4f4f6; --card: #fff; --text: #16161a; --muted: #6b6b76;
+    --border: #e2e2e8; --accent: #3b5bdb; --plus: #2b8a3e; --minus: #c92a2a; --flash: #fff3bf;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121214; --card: #1c1c20; --text: #ececf1; --muted: #9a9aa6;
+      --border: #2c2c33; --accent: #748ffc; --plus: #51cf66; --minus: #ff6b6b; --flash: #3d3510;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  header {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--card);
+    position: sticky; top: 0; z-index: 2;
+  }
+  header h1 { font-size: 18px; margin: 0; flex: 1; min-width: 120px; }
+  .status { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--muted); }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--minus); }
+  .dot.ok { background: var(--plus); }
+  button {
+    font: inherit; border: 1px solid var(--border); background: var(--card); color: var(--text);
+    border-radius: 10px; padding: 8px 14px; cursor: pointer; touch-action: manipulation;
+  }
+  button:active:not(:disabled) { transform: scale(.97); }
+  button:disabled { opacity: .5; cursor: default; }
+  button.link { border: none; background: none; color: var(--accent); padding: 4px; }
+  main { padding: 16px; max-width: 1400px; margin: 0 auto; }
+  .view { display: none; } .view.on { display: block; }
+  h2 { margin: 0 0 12px; font-size: 22px; }
+  .muted { color: var(--muted); }
+
+  /* team picker */
+  .team-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); }
+  .team-btn {
+    border: none; color: #fff; font-size: 28px; font-weight: 700; padding: 36px 12px; border-radius: 16px;
+    text-shadow: 0 1px 2px rgba(0,0,0,.3);
+  }
+
+  /* team screen */
+  .bar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .swatch { width: 18px; height: 18px; border-radius: 50%; flex: none; }
+  .inv { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px;
+    background: var(--card); border: 1px solid var(--border); font-variant-numeric: tabular-nums;
+  }
+  .chip b { font-size: 18px; }
+  .chip.flash { background: var(--flash); }
+  .chip.plus { color: var(--plus); } .chip.minus { color: var(--minus); }
+  .cmd-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); }
+  .cmd-btn { padding: 28px 12px; font-size: 22px; font-weight: 700; border-width: 2px; display: flex; flex-direction: column; gap: 6px; align-items: center; }
+  .cmd-btn small { font-size: 13px; font-weight: 400; color: var(--muted); }
+
+  /* result */
+  .result { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; text-align: center; margin-bottom: 16px; }
+  .result .cmd { font-size: 16px; color: var(--muted); }
+  .result .text { font-size: 26px; font-weight: 700; margin: 10px 0 16px; }
+  .result.err .text { color: var(--minus); }
+  .result .inv { justify-content: center; margin: 0; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .actions button { padding: 14px 22px; font-size: 18px; }
+
+  /* board + admin */
+  .cards { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+  .card { background: var(--card); border: 1px solid var(--border); border-top: 6px solid; border-radius: 12px; padding: 14px; }
+  .card h3 { margin: 0 0 10px; font-size: 22px; }
+  .card .inv { margin-bottom: 8px; }
+  .rot { font-size: 13px; color: var(--muted); }
+  body.board .chip b { font-size: 26px; }
+  body.board .card h3 { font-size: 30px; }
+  .adj { display: grid; grid-template-columns: 1fr auto auto auto; gap: 6px; align-items: center; margin-bottom: 8px; }
+  .adj button { padding: 4px 10px; }
+  .adj .n { min-width: 2.5em; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .split { display: grid; gap: 16px; grid-template-columns: 1fr; margin-top: 16px; }
+  @media (min-width: 1000px) { .split { grid-template-columns: 1fr 1fr; } }
+  .panel { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+  textarea { width: 100%; min-height: 420px; font: 13px/1.4 ui-monospace, Menlo, Consolas, monospace; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+  .log { list-style: none; margin: 0; padding: 0; font-size: 14px; max-height: 480px; overflow-y: auto; }
+  .log li { padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .log .meta { color: var(--muted); font-size: 12px; }
+  .toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--minus); color: #fff; padding: 10px 16px; border-radius: 8px; display: none; z-index: 5; max-width: calc(100% - 32px); }
+  .toast.good { background: var(--plus); }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">Game</h1>
+  <div class="status"><span class="dot" id="dot"></span><span id="conn">Connecting…</span></div>
+  <button class="link" id="device" hidden title="Change this device's name"></button>
+</header>
+
+<main>
+  <!-- PLAYER DEVICE -->
+  <section class="view" id="v-teams">
+    <h2>Choose your team</h2>
+    <div class="team-grid" id="team-grid"></div>
+  </section>
+
+  <section class="view" id="v-team">
+    <div class="bar">
+      <button id="back-teams">← Teams</button>
+      <span class="swatch" id="team-swatch"></span>
+      <h2 id="team-name" style="margin:0"></h2>
+    </div>
+    <div class="inv" id="team-inv"></div>
+    <div class="cmd-grid" id="cmd-grid"></div>
+  </section>
+
+  <section class="view" id="v-result">
+    <div class="result" id="result"></div>
+    <div class="actions">
+      <button id="again">Do another action</button>
+      <button id="done">Done</button>
+    </div>
+  </section>
+
+  <!-- SCOREBOARD (?board) -->
+  <section class="view" id="v-board">
+    <div class="cards" id="board-cards"></div>
+  </section>
+
+  <!-- ADMIN (?admin) -->
+  <section class="view" id="v-admin">
+    <div class="bar">
+      <button id="undo">↶ Undo last change</button>
+      <button id="reset">Reset game</button>
+      <span class="muted">Corrections here are logged as [admin].</span>
+    </div>
+    <div class="cards" id="admin-cards"></div>
+    <div class="split">
+      <div class="panel">
+        <div class="bar" style="margin-bottom:8px">
+          <h2 style="margin:0;flex:1">Rules (game_config.json)</h2>
+          <button id="cfg-reload">Reload</button>
+          <button id="cfg-save">Save rules</button>
+        </div>
+        <textarea id="cfg" spellcheck="false"></textarea>
+      </div>
+      <div class="panel">
+        <h2>Activity</h2>
+        <ul class="log" id="log"></ul>
+      </div>
+    </div>
+  </section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+const Q = new URLSearchParams(location.search);
+const MODE = Q.has("board") ? "board" : Q.has("admin") ? "admin" : "device";
+document.body.classList.add(MODE);
+const $ = id => document.getElementById(id);
+
+function h(tag, props = {}, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (k === "style") Object.assign(el.style, v);
+    else if (k.startsWith("on")) el[k] = v;
+    else if (v !== undefined && v !== null) el[k] = v;
+  }
+  el.append(...kids.flat().filter(k => k !== null && k !== undefined));
+  return el;
+}
+function store(k, v, s = localStorage) {
+  try { if (v === undefined) return s.getItem(k); s.setItem(k, v); } catch { return null; }
+}
+
+// ---- state ----
+let snap = null, prev = null;
+let view = MODE === "device" ? "teams" : MODE;
+let teamId = null, result = null, busy = false;
+let device = store("deviceName") || "";
+let pin = store("adminPin", undefined, sessionStorage) || "";
+
+if (MODE === "device") {
+  if (!device) {
+    device = (prompt("Name for this device (e.g. 'Station 1'):") || "").trim() || "Device " + Math.floor(Math.random() * 900 + 100);
+    store("deviceName", device);
+  }
+  $("device").hidden = false;
+  $("device").textContent = device;
+  $("device").onclick = () => {
+    const n = (prompt("Name for this device:", device) || "").trim();
+    if (n) { device = n; store("deviceName", n); $("device").textContent = n; }
+  };
+} else device = MODE;
+
+// ---- helpers ----
+const item = id => snap.config.items.find(i => i.id === id) || { id, name: id, icon: "" };
+const team = id => snap.state.teams[id];
+
+function invChips(t, flashFrom) {
+  return snap.config.items.map(it => {
+    const n = t.inventory[it.id] ?? 0;
+    const chip = h("span", { className: "chip" }, `${it.icon} ${it.name} `, h("b", {}, String(n)));
+    if (flashFrom && flashFrom.inventory[it.id] !== n) {
+      chip.classList.add("flash"); setTimeout(() => chip.classList.remove("flash"), 600);
+    }
+    return chip;
+  });
+}
+function changeChips(change) {
+  const e = Object.entries(change || {});
+  if (!e.length) return [h("span", { className: "chip" }, "No change")];
+  return e.map(([k, v]) => {
+    const it = item(k);
+    return h("span", { className: "chip " + (v > 0 ? "plus" : "minus") }, h("b", {}, (v > 0 ? "+" : "−") + Math.abs(v)), ` ${it.icon} ${it.name}`);
+  });
+}
+function rotationText(t) {
+  if (snap.config.rotation === "team_wide") return `Team step: ${t.step} (${t.uses} actions)`;
+  return snap.config.commands.map(c => `${c.name} ${t.rotation[c.id] + 1}/${c.effect_count}`).join(" · ");
+}
+
+let toastTimer;
+function toast(msg, good = false) {
+  const t = $("toast"); t.textContent = msg; t.className = "toast" + (good ? " good" : ""); t.style.display = "block";
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.style.display = "none", 3000);
+}
+
+async function send(action, payload = {}) {
+  try {
+    const r = await fetch("/action", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, payload, device, pin }),
+    });
+    const res = await r.json();
+    if (r.status === 403) { askPin(true); }
+    return res;
+  } catch {
+    return { ok: false, error: "Not connected to the game server" };
+  }
+}
+
+// ---- navigation (player device) ----
+let idleTimer;
+function go(v) {
+  view = v;
+  render();
+  armIdle();
+}
+function armIdle() {
+  clearTimeout(idleTimer);
+  const s = snap?.config.return_after_seconds;
+  if (MODE === "device" && view !== "teams" && s) idleTimer = setTimeout(() => { teamId = null; go("teams"); }, s * 1000);
+}
+document.addEventListener("pointerdown", armIdle);
+
+async function useCommand(cmd) {
+  if (busy) return;
+  busy = true; render();
+  const res = await send("do", { team: teamId, command: cmd.id });
+  busy = false;
+  result = res.ok ? res.result : { error: res.error, command_name: cmd.name };
+  go("result");
+}
+
+$("back-teams").onclick = () => { teamId = null; go("teams"); };
+$("again").onclick = () => go("team");
+$("done").onclick = () => { teamId = null; go("teams"); };
+
+// ---- rendering ----
+function render() {
+  if (!snap) return;
+  document.title = $("title").textContent = snap.config.title;
+  for (const v of ["teams", "team", "result", "board", "admin"]) $("v-" + v).classList.toggle("on", v === view);
+  const prevTeam = id => prev?.state.teams[id];
+
+  if (view === "teams") {
+    $("team-grid").replaceChildren(...snap.state.teams.map(t =>
+      h("button", { className: "team-btn", style: { background: t.color }, onclick: () => { teamId = t.id; go("team"); } }, t.name)));
+  }
+
+  if (view === "team") {
+    const t = team(teamId);
+    if (!t) { teamId = null; return go("teams"); }
+    $("team-name").textContent = t.name;
+    $("team-swatch").style.background = t.color;
+    $("team-inv").replaceChildren(...invChips(t, prevTeam(teamId)));
+    $("cmd-grid").replaceChildren(...snap.config.commands.map(c => {
+      const next = t.next?.[c.id];
+      return h("button", { className: "cmd-btn", disabled: busy, style: { borderColor: t.color }, onclick: () => useCommand(c) },
+        c.name,
+        next ? h("small", {}, `${next.text} ${Object.entries(next.change).map(([k, v]) => `${v > 0 ? "+" : ""}${v} ${item(k).icon || item(k).name}`).join(" ")}`) : null);
+    }));
+  }
+
+  if (view === "result") {
+    const t = team(teamId);
+    const r = result;
+    const box = $("result");
+    box.className = "result" + (r.error ? " err" : "");
+    box.style.borderTop = `6px solid ${t.color}`;
+    box.replaceChildren(
+      h("div", { className: "cmd" }, `${t.name} used ${r.command_name}`),
+      h("div", { className: "text" }, r.error ? `Nothing happened: ${r.error}` : (r.text || "Done!")),
+      r.error ? null : h("div", { className: "inv", style: { marginBottom: "16px" } }, changeChips(r.change)),
+      h("div", { className: "muted", style: { marginBottom: "6px" } }, "Inventory now"),
+      h("div", { className: "inv" }, invChips(t, prevTeam(teamId))),
+    );
+  }
+
+  if (view === "board") {
+    $("board-cards").replaceChildren(...snap.state.teams.map(t =>
+      h("div", { className: "card", style: { borderTopColor: t.color } },
+        h("h3", {}, t.name),
+        h("div", { className: "inv" }, invChips(t, prevTeam(t.id))),
+        h("div", { className: "rot" }, `${t.uses} actions`))));
+  }
+
+  if (view === "admin") {
+    $("admin-cards").replaceChildren(...snap.state.teams.map(t =>
+      h("div", { className: "card", style: { borderTopColor: t.color } },
+        h("h3", {}, t.name),
+        snap.config.items.map(it => h("div", { className: "adj" },
+          h("span", {}, `${it.icon} ${it.name}`),
+          h("button", { onclick: () => adminSend("adjust", { team: t.id, item: it.id, delta: -1 }) }, "−1"),
+          h("span", { className: "n" }, String(t.inventory[it.id] ?? 0)),
+          h("button", { onclick: () => adminSend("adjust", { team: t.id, item: it.id, delta: 1 }) }, "+1"))),
+        h("div", { className: "rot" }, rotationText(t)))));
+    $("log").replaceChildren(...[...snap.log].reverse().map(e =>
+      h("li", {}, e.msg, h("div", { className: "meta" },
+        `${new Date(e.t * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })} · ${e.device}`))));
+  }
+}
+
+// ---- admin ----
+function askPin(wrong) {
+  if (!snap?.pin_required) return true;
+  if (pin && !wrong) return true;
+  const p = prompt(wrong ? "Wrong PIN. Admin PIN:" : "Admin PIN:");
+  if (p === null) return false;
+  pin = p.trim(); store("adminPin", pin, sessionStorage);
+  return true;
+}
+async function adminSend(action, payload) {
+  if (!askPin()) return;
+  const res = await send(action, payload);
+  if (!res.ok) toast(res.error || "Rejected");
+  return res;
+}
+async function loadConfig() {
+  if (!askPin()) return;
+  const r = await fetch("/config?pin=" + encodeURIComponent(pin));
+  if (r.status === 403) { askPin(true); return loadConfig(); }
+  $("cfg").value = JSON.stringify(await r.json(), null, 2);
+}
+$("cfg-reload").onclick = loadConfig;
+$("cfg-save").onclick = async () => {
+  let cfg;
+  try { cfg = JSON.parse($("cfg").value); } catch (e) { return toast("Invalid JSON: " + e.message); }
+  const res = await adminSend("set_config", { config: cfg });
+  if (res?.ok) { toast("Rules saved and live on all devices", true); loadConfig(); }
+};
+$("undo").onclick = () => adminSend("undo");
+$("reset").onclick = () => { if (confirm("Reset ALL inventories and rotations for every team?")) adminSend("reset"); };
+
+// ---- live connection ----
+let first = true;
+const es = new EventSource("/events");
+es.onopen = () => { $("dot").classList.add("ok"); $("conn").textContent = "Live"; };
+es.onerror = () => { $("dot").classList.remove("ok"); $("conn").textContent = "Reconnecting…"; };
+es.onmessage = e => {
+  prev = snap; snap = JSON.parse(e.data);
+  if (busy && view === "team") return;  // don't redraw under a pending press
+  render();
+  if (first) { first = false; if (MODE === "admin") loadConfig(); }
+};
+</script>
+</body>
+</html>

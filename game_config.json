@@ -1,0 +1,76 @@
+{
+  "title": "Event Game",
+  "rotation": "per_command",
+  "allow_negative": false,
+  "show_next_effect": false,
+  "return_after_seconds": 15,
+  "teams": [
+    {"name": "Red", "color": "#e03131"},
+    {"name": "Blue", "color": "#1971c2"},
+    {"name": "Green", "color": "#2f9e44"},
+    {"name": "Yellow", "color": "#f08c00"},
+    {"name": "Purple", "color": "#9c36b5"},
+    {"name": "Teal", "color": "#0c8599"}
+  ],
+  "items": [
+    {"id": "wood", "name": "Wood", "icon": "🪵"},
+    {"id": "stone", "name": "Stone", "icon": "🪨"},
+    {"id": "food", "name": "Food", "icon": "🌾"},
+    {"id": "gold", "name": "Gold", "icon": "🪙"}
+  ],
+  "start_inventory": {"wood": 0, "stone": 0, "food": 2, "gold": 1},
+  "commands": [
+    {
+      "id": "forest",
+      "name": "Forest",
+      "effects": [
+        {"text": "You chop a few trees.", "change": {"wood": 2}},
+        {"text": "The forest is thinning out.", "change": {"wood": 1}},
+        {"text": "A big oak falls!", "change": {"wood": 4, "food": -1}}
+      ]
+    },
+    {
+      "id": "quarry",
+      "name": "Quarry",
+      "effects": [
+        {"text": "You break some rocks.", "change": {"stone": 2, "food": -1}},
+        {"text": "You hit a rich vein.", "change": {"stone": 3, "food": -1}},
+        {"text": "The quarry flooded. Nothing to dig.", "change": {}}
+      ]
+    },
+    {
+      "id": "farm",
+      "name": "Farm",
+      "effects": [
+        {"text": "You plant seeds.", "change": {"wood": -1}},
+        {"text": "Harvest time!", "change": {"food": 4}}
+      ]
+    },
+    {
+      "id": "market",
+      "name": "Market",
+      "effects": [
+        {"text": "You sell wood.", "change": {"wood": -3, "gold": 2}},
+        {"text": "You sell stone.", "change": {"stone": -3, "gold": 2}},
+        {"text": "You buy supplies.", "change": {"gold": -1, "food": 3}}
+      ]
+    },
+    {
+      "id": "mine",
+      "name": "Mine",
+      "effects": [
+        {"text": "Darkness. You find nothing.", "change": {"food": -1}},
+        {"text": "A glint of gold!", "change": {"gold": 2, "food": -1}},
+        {"text": "Jackpot!", "change": {"gold": 4, "food": -2}}
+      ]
+    },
+    {
+      "id": "build",
+      "name": "Build",
+      "effects": [
+        {"text": "You build a hut.", "change": {"wood": -3, "stone": -1, "gold": 3}},
+        {"text": "You build a tower.", "change": {"wood": -2, "stone": -4, "gold": 6}}
+      ]
+    }
+  ]
+}
