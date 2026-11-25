@@ -1,3 +1,7 @@
+## NOTE: THIS REPOSITORY CODE IS FULLY AI-GENERATED
+
+---
+
 # Event game control
 
 A live team game: players walk up to any of the devices, pick their team, press a command, and see what it did to their team's inventory.
